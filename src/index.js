@@ -1,10 +1,61 @@
+function rand() {
+    return (Math.random() * 2.0) - 1;
+}
+
+function nnArray(arr) {
+    var array;
+    if (arr) {
+        array = typeof arr === 'number' ? new Array(arr) : arr;
+    } else {
+        array = [];
+    }
+
+    Object.defineProperty(array, 'fill', {
+        enumerable: false,
+        writable: false,
+        value: function (value) {
+            var len = array.length,
+                x = 0;
+            for (x; x < len; x += 1) {
+                array[x] = typeof value === 'function' ? value.apply(array[x]) : value;
+            }
+        }
+    });
+    return array;
+}
+
 function Network(sizesArray) {
     this.numLayers = sizesArray.length;
     this.sizes = sizesArray;
-    this.biases = undefined;
-    this.weights = undefined;
+    var self = this;
+    (function () {
+        var layers = Object.create(sizesArray);
+        // take out the output layer
+        layers.pop();
+        // take out the input layer
+        layers.shift();
+        var biases = [];
+        layers.forEach(function (len) {
+            var array = nnArray(len);
+            array.fill(rand);
+            biases.push(array);
+        });
+        self.biases = biases;
+
+    }());
+    this.weights = [];
 }
 
+var nn = new Network([2, 4, 3, 1]);
+console.log(nn.biases);
+var a = nnArray([0, 0, 0]);
+console.log(a);
+a.fill(rand)
+console.log(a);
+
+var b = nnArray(5);
+b.fill(3);
+console.log(b);
 /*
 """
 network.py
