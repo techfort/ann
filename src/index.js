@@ -2,6 +2,106 @@ function rand() {
     return (Math.random() * 2.0) - 1;
 }
 
+var util = {};
+util.randn = function (rows, cols) {
+    var matrix = [],
+        row;
+    for (var r = 0; r < rows; r += 1) {
+        row = [];
+        for (var c = 0; c < cols; c += 1) {
+            row.push(rand());
+        }
+        matrix.push(row);
+    }
+    return matrix;
+};
+
+util.argmax = function (arr) {
+    return arr.indexOf(Math.max.apply(Math, arr));
+};
+
+util.xrange = function (min, max) {
+
+}
+
+util.vectorize = function (func) {
+    return function (array, val) {
+        var result = [];
+        array.forEach(function (elem) {
+            result.push(func(elem, val));
+        });
+        return result;
+    }
+};
+
+util.sigmoid = function (x) {
+    return 1.0 / (1.0 + Math.exp(-x));
+};
+
+util.sigmoid_vec = util.vectorize(util.sigmoid);
+
+util.sigmoid_prime = function (z) {
+    return util.sigmoid(z) * (1 - util.sigmoid(z));
+};
+
+util.sigmoid_prime_vec = util.vectorize(util.sigmoid_prime);
+
+util.zip = function (a, b) {
+    if (a.length !== b.length) {
+        throw new Error('zipping requires same length arrays');
+    }
+    var result = [],
+        i = 0,
+        len = a.length;
+    for (i; i < len; i += 1) {
+        result.push([a[i], b[i]]);
+    }
+    return result;
+}
+
+util.dot = function (a, b) {
+    var n = 0,
+        lim = Math.min(a.length, b.length);
+    for (var i = 0; i < lim; i++) n += a[i] * b[i];
+    return n;
+};
+
+util.zeros = function (shape) {
+    if (typeof shape === 'number') {
+        var array = nnArray(shape);
+        array.fill(0);
+        return array;
+    }
+
+    var rows = shape[0],
+        cols = shape[1],
+        array = [];
+
+    util.for(rows, function () {
+        var row = nnArray(cols);
+        row.fill(0);
+        array.push(row);
+    });
+
+    return array;
+};
+
+util.for = function (times, func) {
+    var i = 0;
+    for (i; i < times; i += 1) {
+        func();
+    }
+};
+
+util.shuffle = function (array) {
+    var o = Object.create(array);
+    for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i),
+        x = o[--i],
+        o[i] = o[j],
+        o[j] = x);
+    return o;
+};
+
 function nnArray(arr) {
     var array;
     if (arr) {
@@ -21,14 +121,26 @@ function nnArray(arr) {
             }
         }
     });
+
+    Object.defineProperty(array, 'at', {
+        enumerable: false,
+        writable: false,
+        value: function (num) {
+            if (num > -1) {
+                return array[num];
+            }
+            return array[array.length + num];
+        }
+    });
     return array;
 }
 
 function Network(sizesArray) {
     this.numLayers = sizesArray.length;
     this.sizes = sizesArray;
-    var self = this;
-    (function () {
+
+    // set the biases
+    this.biases = (function () {
         var layers = Object.create(sizesArray);
         // take out the output layer
         layers.pop();
@@ -40,22 +152,67 @@ function Network(sizesArray) {
             array.fill(rand);
             biases.push(array);
         });
-        self.biases = biases;
-
+        return biases;
     }());
-    this.weights = [];
+
+    this.weights = (function () {
+        var a = Object.create(sizesArray),
+            b = Object.create(sizesArray),
+            len = a.length,
+            i = 0;
+        // input to last hidden
+        a.pop();
+        // first hidden to output
+        b.shift();
+
+        var weights = [];
+        util.zip(a, b).forEach(function (pair) {
+            weights.push(util.randn(pair[0], pair[1]));
+        });
+        return weights;
+    }());
 }
+
+Network.prototype.feedforward = function (a) {
+    util.zip(this.biases, this.weights).forEach(function (pair) {
+        var bias = pair[0],
+            weight = pair[1];
+        a = util.sigmoid_vec(util.dot(weight, a) + bias);
+    });
+    return a;
+};
+
+Network.prototype.SGD = function (training_data, epochs,
+    mini_batch_size, eta, test_data) {
+
+};
+
+Network.prototype.updateMiniBatch = function (mini_batch, eta) {
+
+};
+
+Network.prototype.backprop = function () {
+
+};
+
+Network.prototype.evaluate = function (test_data) {
+
+    var sum = 0,
+        self = this;
+    test_data.forEach(function (t) {
+        sum += util.argmax(self.feedforward(t[0])) === t[1] ? 1 : 0;
+    });
+    return sum;
+};
+Network.prototype.costDerivative = function (output_activations, y) {
+    return (output_activations - y);
+};
 
 var nn = new Network([2, 4, 3, 1]);
 console.log(nn.biases);
-var a = nnArray([0, 0, 0]);
-console.log(a);
-a.fill(rand)
-console.log(a);
+console.log('weights', nn.weights);
 
-var b = nnArray(5);
-b.fill(3);
-console.log(b);
+
 /*
 """
 network.py
