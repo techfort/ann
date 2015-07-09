@@ -102,6 +102,10 @@ util.shuffle = function (array) {
     return o;
 };
 
+util.sumPair = function (pair) {
+    return pair[0] + pair[1];
+};
+
 function nnArray(arr) {
     var array;
     if (arr) {
@@ -188,11 +192,71 @@ Network.prototype.SGD = function (training_data, epochs,
 };
 
 Network.prototype.updateMiniBatch = function (mini_batch, eta) {
+    var nabla_b = [],
+        nabla_w = [];
+    // this.biases.forEach(function (bias) {
+    //     nabla_b.push(util.zeros(bias));
+    // });
+    nabla_b = this.biases.map(util.zeros);
+    nabla_w = this.weights.map(util.zeros);
 
+    // this.weights.forEach(function (weight) {
+    //     nabla_w.push(util.zeros(weight));
+    // });
+    var delta_nabla = this.backprop(mini_batch[0], mini_batch[1]),
+        delta_nabla_b = delta_nabla[0],
+        delta_nabla_w = delta_nabla[1];
+    nabla_b = util.zip(nabla_b, delta_nabla_b).map(util.sumPair);
+    nabla_w = util.zip(nabla_w, delta_nabla_w).map(util.sumPair);
+    this.weights = util.zip(this.weights, nabla_w).map(function (pair) {
+        var w = pair[0],
+            nw = pair[1];
+        return w - (eta / mini_batch.length) * nw;
+    });
+    this.biases = util.zip(this.biases, nabla_b).map(function (pair) {
+        var b = pair[0],
+            nb = pair[1];
+        return b - (eta / mini_batch.length) * nb;
+    });
 };
 
 Network.prototype.backprop = function () {
-
+    /*
+"""Return a tuple ``(nabla_b, nabla_w)`` representing the
+        gradient for the cost function C_x.  ``nabla_b`` and
+        ``nabla_w`` are layer-by-layer lists of numpy arrays, similar
+        to ``self.biases`` and ``self.weights``."""
+        nabla_b = [np.zeros(b.shape) for b in self.biases]
+        nabla_w = [np.zeros(w.shape) for w in self.weights]
+        # feedforward
+        activation = x
+        activations = [x] # list to store all the activations, layer by layer
+        zs = [] # list to store all the z vectors, layer by layer
+        for b, w in zip(self.biases, self.weights):
+            z = np.dot(w, activation)+b
+            zs.append(z)
+            activation = sigmoid_vec(z)
+            activations.append(activation)
+        # backward pass
+        delta = self.cost_derivative(activations[-1], y) * \
+            sigmoid_prime_vec(zs[-1])
+        nabla_b[-1] = delta
+        nabla_w[-1] = np.dot(delta, activations[-2].transpose())
+        # Note that the variable l in the loop below is used a little
+        # differently to the notation in Chapter 2 of the book.  Here,
+        # l = 1 means the last layer of neurons, l = 2 is the
+        # second-last layer, and so on.  It's a renumbering of the
+        # scheme in the book, used here to take advantage of the fact
+        # that Python can use negative indices in lists.
+        for l in xrange(2, self.num_layers):
+            z = zs[-l]
+            spv = sigmoid_prime_vec(z)
+            delta = np.dot(self.weights[-l+1].transpose(), delta) * spv
+            nabla_b[-l] = delta
+            nabla_w[-l] = np.dot(delta, activations[-l-1].transpose())
+        return (nabla_b, nabla_w)
+    */
+    return [delta_nabla_b, delta_nabla_w];
 };
 
 Network.prototype.evaluate = function (test_data) {
